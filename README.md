@@ -1,39 +1,66 @@
 
-# Brendan Bycroft's Home Page & Projects
+# LLM Visualization — Annotated with nanoGPT Source
 
-This repository contains my (Brendan's) homepage, as well as a number of non-trivial projects.
+**Live demo:** [llm-viz-annotated.vercel.app/llm](https://llm-viz-annotated.vercel.app/llm)
 
-They are kept in a single repository for ease of deployment, as well as sharing a bunch of js utils
-which are otherwise a pain to share around.
+This is a fork of [Brendan Bycroft's LLM Visualization](https://github.com/bbycroft/llm-viz) with added nanoGPT code annotations throughout the 3D walkthrough. Each phase of the visualization now includes the corresponding Python source from [Karpathy's nanoGPT](https://github.com/karpathy/nanoGPT), so you can follow the animated forward pass alongside the actual code.
 
-## Projects
+## What was added
 
-The main projects are:
-* LLM Visualization: 3D interactive model of a GPT-style LLM network running inference.
-* [WIP] CPU Simulation: A 2D digital schematic editor with full a execution model, showcasing a simple
-  RISC-V based CPU
+All 10 walkthrough phases are annotated with inline code snippets from nanoGPT's `model.py`:
 
-### LLM Visualization
+| Phase | Concept | Key code shown |
+|-------|---------|---------------|
+| 0. Intro | Model overview | `GPTConfig`, `GPT.forward` complete flow |
+| 1. Preliminary | Code structure | Class overview (GPT, Block, MLP, etc.) |
+| 2. Embedding | Token + position embedding | `wte(idx)`, `wpe(pos)`, `tok_emb + pos_emb` |
+| 3. LayerNorm | Layer normalization | `F.layer_norm(...)`, `self.ln_1(x)` |
+| 4. Self-Attention | Q, K, V and attention | `c_attn`, `q @ k.T`, masking, softmax, `att @ v` |
+| 5. Softmax | Normalization to probabilities | `F.softmax(att)`, `F.softmax(logits)` |
+| 6. Projection | Head reassembly + residual | `view(B,T,C)`, `c_proj(y)`, residual add |
+| 7. MLP | Feed-forward network | `c_fc` -> `gelu` -> `c_proj` -> dropout |
+| 8. Transformer | Block stacking | `Block.forward`, `for block in self.transformer.h` |
+| 9. Output | Logits, sampling, loss | `lm_head(x)`, `multinomial`, `cross_entropy` |
 
-This project displays a 3D model of a working implementation of a GPT-style network. That
-is, the network topology that's used in OpenAI's GPT-2, GPT-3, (and maybe GPT-4).
+### Annotation features
 
-The first network displayed with working weights is a tiny such network, which sorts a small list
-of the letters A, B, and C. This is the demo example model from Andrej Karpathy's
-[minGPT](https://github.com/karpathy/minGPT) implementation.
+- **Forward-pass first**: Code snippets lead with the forward pass being animated, with class definitions collapsed for reference
+- **Granular per-step snippets**: Compact single-line code snippets appear at each animation step (e.g., separate snippets for token embed, position embed, and addition)
+- **Concrete tensor shapes**: Shapes match the visualization's model — `(1, 11, 48)` instead of abstract `(B, T, C)`
+- **Variable name mapping**: Commentary bridges visualization names to code names (e.g., "input embedding (`x`)", "Q vectors (`q`)")
+- **Python syntax highlighting**: Keywords, strings, comments, builtins, and numbers are colour-coded
+- **Collapsible snippets**: Click the header to expand/collapse
 
-The renderer also supports visualizing arbitrary sized networks, and works with the smaller gpt2
-size, although the weights aren't downloaded (it's 100's of MBs).
+### Visualization model
 
-### CPU Simulation (WIP; not exposed yet!)
+The 3D walkthrough uses a tiny 85K-parameter GPT that sorts 6 letters (A, B, C):
 
-This project runs 2D schematic digital circuits, with a fully fledged editor. The intent is to
-add a number of walkthroughs, showing things such as:
-  * how a simple RISC-V CPU is constructed
-  * the constituent parts down to gate level: instruction decode, ALU, add, etc
-  * higher level CPU ideas, like various levels of pipelining, caching, etc
+| Parameter | Value |
+|-----------|-------|
+| `n_embd` (C) | 48 |
+| `n_head` | 3 |
+| `n_layer` | 3 |
+| `block_size` (T) | 11 |
+| `vocab_size` | 3 |
 
-## Running Locally
+A matching nanoGPT training config is at [`config/train_shakespeare_char_bbycroft.py`](https://github.com/haveaguess/nanoGPT_playgroup_202602/blob/master/config/train_shakespeare_char_bbycroft.py) in our nanoGPT playgroup repo.
+
+## Running locally
 
 1. Install dependencies: `yarn`
-1. Start the dev server: `yarn dev`
+2. Start the dev server: `yarn dev`
+3. Open [http://localhost:3002/llm](http://localhost:3002/llm)
+
+## Deployment
+
+Deployed to Vercel (free tier, auto-detects Next.js):
+
+```sh
+npx vercel --prod
+```
+
+## Credits
+
+- Original visualization: [Brendan Bycroft](https://github.com/bbycroft/llm-viz)
+- nanoGPT: [Andrej Karpathy](https://github.com/karpathy/nanoGPT)
+- Code annotations: Added by this fork
