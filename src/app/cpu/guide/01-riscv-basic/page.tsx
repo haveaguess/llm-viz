@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import React from 'react';
 import { CPUDirectory, makeCpuMetadata } from '@/src/cpu/guide/GuideIndex';
 import { CpuEnabledGuide, GuideSection, Ins, Para } from '@/src/cpu/guide/CpuEnabledGuide';
