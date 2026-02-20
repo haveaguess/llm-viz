@@ -14,7 +14,7 @@ export function walkthrough05_Softmax(args: IWalkthroughArgs) {
 
     let c0 = commentary(wt, null, 0)`
 
-The softmax operation is used as part of self-attention, as seen in the previous section, and it
+The softmax operation is used as part of self-attention (on the \`att\` matrix), as seen in the previous section, and it
 will also appear at the very end of the model.
 
 Its goal is to take a vector and normalize its values so that they sum to 1.0. However, it's not as
@@ -30,10 +30,10 @@ values will be between 0.0 and 1.0, which provides a probability distribution ov
 That's it for softmax: simply exponentiate the values and then divide by the sum.
 
 ${codeSnippet(`# In CausalSelfAttention.forward — softmax on attention scores:
-att = F.softmax(att, dim=-1)
+att = F.softmax(att, dim=-1)    # (1, 3, 11, 11) each row sums to 1
 
 # At the output — softmax to get token probabilities:
-probs = F.softmax(logits, dim=-1)`, 'model.py', 69)}
+probs = F.softmax(logits, dim=-1)  # (1, 11, 3) each row sums to 1`, 'model.py', 69)}
 
 However, there's a slight complication. If any of the input values are quite large, then the
 exponentiated values will be very large. We'll end up dividing a large number by a very large number,

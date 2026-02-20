@@ -66,13 +66,13 @@ and sort them in alphabetical order, i.e. to "ABBBCC".
 
 ${codeSnippet(`@dataclass
 class GPTConfig:
-    block_size: int = 1024  # T: context length
-    vocab_size: int = 50304
-    n_layer: int = 12       # number of transformer blocks
-    n_head: int = 12        # number of attention heads
-    n_embd: int = 768       # C: embedding dimension
+    block_size: int = 1024  # T: context length (viz: 11)
+    vocab_size: int = 50304 # (viz: 3)
+    n_layer: int = 12       # transformer blocks (viz: 3)
+    n_head: int = 12        # attention heads (viz: 3)
+    n_embd: int = 768       # C: embedding dim (viz: 48)
     dropout: float = 0.0
-    bias: bool = True`, 'model.py', 108)}`;
+    bias: bool = True`, 'model.py — GPTConfig', 108)}`;
 
     if (c0.t > 0) {
         for (let cube of layout.cubes) {
@@ -177,7 +177,16 @@ class GPTConfig:
     }
 
     breakAfter();
-    commentary(wt)`The embedding is then passed through the model, going through a series of layers, called transformers, before reaching the bottom.
+    commentary(wt)`The embedding is then passed through the model (\`GPT.forward\`), going through a series of layers, called transformers, before reaching the bottom.
+
+${codeSnippet(`# GPT.forward — the complete forward pass:
+tok_emb = self.transformer.wte(idx)     # (1, 11, 48)
+pos_emb = self.transformer.wpe(pos)     # (11, 48)
+x = self.transformer.drop(tok_emb + pos_emb)
+for block in self.transformer.h:        # 3 blocks
+    x = block(x)                        # (1, 11, 48)
+x = self.transformer.ln_f(x)           # (1, 11, 48)
+logits = self.lm_head(x)               # (1, 11, 3)`, 'model.py — GPT.forward', 177)}
 
 ${codeSnippet(`self.transformer = nn.ModuleDict(dict(
     wte = nn.Embedding(config.vocab_size, config.n_embd),
@@ -188,7 +197,7 @@ ${codeSnippet(`self.transformer = nn.ModuleDict(dict(
     ln_f = LayerNorm(config.n_embd, bias=config.bias),
 ))
 self.lm_head = nn.Linear(config.n_embd,
-                          config.vocab_size, bias=False)`, 'model.py — GPT.__init__', 126)}`;
+                          config.vocab_size, bias=False)`, 'model.py — GPT.__init__', 126, true)}`;
     breakAfter();
 
     {

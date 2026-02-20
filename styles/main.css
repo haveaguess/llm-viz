@@ -69,6 +69,17 @@
 .code-function { color: #8250df; }
 .code-decorator { color: #cf222e; }
 
+/* Compact variant for single-line or short snippets */
+.code-snippet-compact {
+    margin: 4px 0;
+}
+.code-snippet-compact .code-snippet-header {
+    padding: 3px 12px;
+}
+.code-snippet-compact .code-snippet-code {
+    padding: 4px 12px;
+}
+
 button {
     /* clear all the cruft from the default button styles */
     border: none;

@@ -73,14 +73,15 @@ export interface CodeSnippetProps {
     filename?: string;
     lineStart?: number;
     collapsed?: boolean;
+    compact?: boolean;
 }
 
-export const CodeSnippet: React.FC<CodeSnippetProps> = ({ code, filename, lineStart, collapsed: initialCollapsed }) => {
+export const CodeSnippet: React.FC<CodeSnippetProps> = ({ code, filename, lineStart, collapsed: initialCollapsed, compact }) => {
     let [isCollapsed, setIsCollapsed] = useState(initialCollapsed ?? false);
 
     let trimmedCode = code.replace(/^\n+/, '').replace(/\n+$/, '');
 
-    return <div className="code-snippet">
+    return <div className={compact ? "code-snippet code-snippet-compact" : "code-snippet"}>
         {filename && <div className="code-snippet-header" onClick={() => setIsCollapsed(!isCollapsed)}>
             <span className="code-snippet-toggle">{isCollapsed ? '▶' : '▼'}</span>
             <span className="code-snippet-filename">{filename}</span>
@@ -93,6 +94,6 @@ export const CodeSnippet: React.FC<CodeSnippetProps> = ({ code, filename, lineSt
 };
 
 // Helper to create an embeddable code snippet for use in commentary
-export function codeSnippet(code: string, filename?: string, lineStart?: number, collapsed?: boolean) {
-    return { insertInline: <CodeSnippet code={code} filename={filename} lineStart={lineStart} collapsed={collapsed} /> };
+export function codeSnippet(code: string, filename?: string, lineStart?: number, collapsed?: boolean, compact?: boolean) {
+    return { insertInline: <CodeSnippet code={code} filename={filename} lineStart={lineStart} collapsed={collapsed} compact={compact} /> };
 }

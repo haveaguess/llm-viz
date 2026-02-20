@@ -35,14 +35,16 @@ Let's take a look at how the 4th token (index 3) is used to generate the 4th col
     breakAfter();
 
     commentary(wt)`
-We use the token index (in this case ${c_str('B', DimStyle.Token)} = ${c_dimRef('1', DimStyle.TokenIdx)}) to select the 2nd column of the ${c_blockRef('_token embedding matrix_', state.layout.tokEmbedObj)} on the left.
+We use the token index (in this case ${c_str('B', DimStyle.Token)} = ${c_dimRef('1', DimStyle.TokenIdx)}) to select the 2nd column of the ${c_blockRef('_token embedding matrix_', state.layout.tokEmbedObj)} (\`self.transformer.wte\`) on the left.
 Note we're using 0-based indexing here, so the first column is at index 0.
 
 This produces a column vector of size ${c_dimRef('_C_ = 48', DimStyle.C)}, which we describe as the token embedding.
 
+${codeSnippet(`tok_emb = self.transformer.wte(idx)  # (1, 11) -> (1, 11, 48)`, 'model.py — GPT.forward', 177, false, true)}
+
 ${codeSnippet(`# In GPT.__init__:
-wte = nn.Embedding(config.vocab_size, config.n_embd)
-wpe = nn.Embedding(config.block_size, config.n_embd)`, 'model.py — GPT.__init__', 127)}
+wte = nn.Embedding(config.vocab_size, config.n_embd)  # (3, 48)
+wpe = nn.Embedding(config.block_size, config.n_embd)  # (11, 48)`, 'model.py — GPT.__init__', 127, true)}
     `;
     breakAfter();
 
@@ -52,9 +54,11 @@ wpe = nn.Embedding(config.block_size, config.n_embd)`, 'model.py — GPT.__init_
     breakAfter();
 
     commentary(wt)`
-And since we're looking at our token ${c_str('B', DimStyle.Token)} in the 4th _position_ (t = ${c_dimRef('3', DimStyle.T)}), we'll take the 4th column of the ${c_blockRef('_position embedding matrix_', state.layout.posEmbedObj)}.
+And since we're looking at our token ${c_str('B', DimStyle.Token)} in the 4th _position_ (t = ${c_dimRef('3', DimStyle.T)}), we'll take the 4th column of the ${c_blockRef('_position embedding matrix_', state.layout.posEmbedObj)} (\`self.transformer.wpe\`).
 
 This also produces a column vector of size ${c_dimRef('_C_ = 48', DimStyle.C)}, which we describe as the position embedding.
+
+${codeSnippet(`pos_emb = self.transformer.wpe(pos)  # (11,) -> (11, 48)`, 'model.py — GPT.forward', 178, false, true)}
     `;
     breakAfter();
 
@@ -67,10 +71,7 @@ Note that both of these position and token embeddings are learned during trainin
 
 Now that we have these two column vectors, we simply add them together to produce another column vector of size ${c_dimRef('_C_ = 48', DimStyle.C)}.
 
-${codeSnippet(`# In GPT.forward:
-tok_emb = self.transformer.wte(idx)   # (b, t, n_embd)
-pos_emb = self.transformer.wpe(pos)   # (t, n_embd)
-x = self.transformer.drop(tok_emb + pos_emb)`, 'model.py — GPT.forward', 177)}
+${codeSnippet(`x = self.transformer.drop(tok_emb + pos_emb)  # (1, 11, 48)`, 'model.py — GPT.forward', 179, false, true)}
 `;
 
     breakAfter();
@@ -104,7 +105,7 @@ The ${c_dimRef('_T_', DimStyle.T)} stands for ${c_dimRef('_time_', DimStyle.T)},
 The ${c_dimRef('_C_', DimStyle.C)} stands for ${c_dimRef('_channel_', DimStyle.C)}, but is also referred to as "feature" or "dimension" or "embedding size". This length, ${c_dimRef('_C_', DimStyle.C)},
 is one of the several "hyperparameters" of the model, and is chosen by the designer to in a tradeoff between model size and performance.
 
-This matrix, which we'll refer to as the ${c_blockRef('_input embedding_', state.layout.residual0)} is now ready to be passed down through the model.
+This matrix, which we'll refer to as the ${c_blockRef('_input embedding_', state.layout.residual0)} (\`x\`), is now ready to be passed down through the model.
 This collection of ${c_dimRef('T', DimStyle.T)} columns each of length ${c_dimRef('C', DimStyle.C)} will become a familiar sight throughout this guide.
 `;
 

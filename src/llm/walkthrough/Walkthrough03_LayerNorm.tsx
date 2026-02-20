@@ -25,20 +25,22 @@ export function walkthrough03_LayerNorm(args: IWalkthroughArgs) {
 
     commentary(wt, null, 0)`
 
-The  ${c_blockRef('_input embedding_', state.layout.residual0)} matrix from the previous section is the input to our first Transformer block.
+The  ${c_blockRef('_input embedding_', state.layout.residual0)} (\`x\`) matrix from the previous section is the input to our first Transformer block.
 
-The first step in the Transformer block is to apply _layer normalization_ to this matrix. This is an
+The first step in the Transformer block is to apply _layer normalization_ (\`self.ln_1\`) to this matrix. This is an
 operation that normalizes the values in each column of the matrix separately.
+
+${codeSnippet(`x = x + self.attn(self.ln_1(x))  # (1, 11, 48)`, 'model.py — Block.forward', 104, false, true)}
 
 ${codeSnippet(`class LayerNorm(nn.Module):
     def __init__(self, ndim, bias):
         super().__init__()
-        self.weight = nn.Parameter(torch.ones(ndim))
-        self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None
+        self.weight = nn.Parameter(torch.ones(ndim))   # (48,)
+        self.bias = nn.Parameter(torch.zeros(ndim)) if bias else None  # (48,)
 
     def forward(self, input):
         return F.layer_norm(input, self.weight.shape,
-                            self.weight, self.bias, 1e-5)`, 'model.py — LayerNorm', 18)}`;
+                            self.weight, self.bias, 1e-5)`, 'model.py — LayerNorm', 18, true)}`;
     breakAfter();
 
     let t_moveCamera = afterTime(null, 1.0);
@@ -78,13 +80,12 @@ variance is simply the standard deviation squared. The epsilon term (ε = ${<>1&
 We compute and store these values in our aggregation layer since we're applying them to all values in the column.
 
 Finally, once we have the normalized values, we multiply each element in the column by a learned
-${c_blockRef('weight (\u03b3)', ln.lnSigma)} and then add a ${c_blockRef('bias (β)', ln.lnMu)} value, resulting in our ${c_blockRef('normalized values', ln.lnResid)}.
+${c_blockRef('weight (\u03b3)', ln.lnSigma)} (\`self.weight\`) and then add a ${c_blockRef('bias (β)', ln.lnMu)} (\`self.bias\`) value, resulting in our ${c_blockRef('normalized values', ln.lnResid)} (\`self.ln_1(x)\`).
 
-In nanoGPT, this is applied before each sub-layer (pre-norm architecture):
+In nanoGPT, the actual normalization is:
 
-${codeSnippet(`# In Block.forward — LayerNorm applied before attention:
-x = x + self.attn(self.ln_1(x))
-x = x + self.mlp(self.ln_2(x))`, 'model.py — Block.forward', 104)}`;
+${codeSnippet(`F.layer_norm(input, self.weight.shape,
+             self.weight, self.bias, 1e-5)  # (1, 11, 48)`, 'model.py — LayerNorm.forward', 27, false, true)}`;
 
     breakAfter();
 

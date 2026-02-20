@@ -25,33 +25,32 @@ export function walkthrough07_Mlp(args: IWalkthroughArgs) {
 
     commentary(wt)`
 
-The next half of the transformer block, after the self-attention, is the MLP (multi-layer
+The next half of the transformer block, after the self-attention, is the MLP (\`MLP\`, multi-layer
 perceptron). A bit of a mouthful, but here it's a simple neural network with two layers.
 
-Like with self-attention, we perform a ${c_blockRef('layer normalization', block.ln2.lnResid)} before the vectors enter the MLP.
+Like with self-attention, we perform a ${c_blockRef('layer normalization', block.ln2.lnResid)} (\`self.ln_2\`) before the vectors enter the MLP.
 
 In the MLP, we put each of our ${c_dimRef('C = 48', DimStyle.C)} length column vectors (independently) through:
 
-1. A ${c_blockRef('linear transformation', block.mlpFcWeight)} with a ${c_blockRef('bias', block.mlpFcBias)} added, to a vector of length ${c_dimRef('4 * C', DimStyle.C4)}.
+1. A ${c_blockRef('linear transformation', block.mlpFcWeight)} (\`self.c_fc\`) with a ${c_blockRef('bias', block.mlpFcBias)} added, to a vector of length ${c_dimRef('4 * C', DimStyle.C4)}.
 
-2. A GELU activation function (element-wise)
+2. A GELU activation function (\`self.gelu\`) (element-wise)
 
-3. A ${c_blockRef('linear transformation', block.mlpProjWeight)} with a ${c_blockRef('bias', block.mlpProjBias)} added, back to a vector of length ${c_dimRef('C', DimStyle.C)}
+3. A ${c_blockRef('linear transformation', block.mlpProjWeight)} (\`self.c_proj\`) with a ${c_blockRef('bias', block.mlpProjBias)} added, back to a vector of length ${c_dimRef('C', DimStyle.C)}
+
+${codeSnippet(`# MLP.forward:
+x = self.c_fc(x)    # (1, 11, 48) -> (1, 11, 192)
+x = self.gelu(x)    # (1, 11, 192) element-wise
+x = self.c_proj(x)  # (1, 11, 192) -> (1, 11, 48)
+x = self.dropout(x)`, 'model.py — MLP.forward', 88)}
 
 ${codeSnippet(`class MLP(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.c_fc   = nn.Linear(config.n_embd, 4 * config.n_embd, bias=config.bias)
+        self.c_fc   = nn.Linear(config.n_embd, 4 * config.n_embd)   # (48, 192)
         self.gelu   = nn.GELU()
-        self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd, bias=config.bias)
-        self.dropout = nn.Dropout(config.dropout)
-
-    def forward(self, x):
-        x = self.c_fc(x)
-        x = self.gelu(x)
-        x = self.c_proj(x)
-        x = self.dropout(x)
-        return x`, 'model.py — MLP', 78)}
+        self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd)   # (192, 48)
+        self.dropout = nn.Dropout(config.dropout)`, 'model.py — MLP.__init__', 78, true)}
 
 Let's track one of those vectors:
 `;
@@ -64,6 +63,8 @@ Let's track one of those vectors:
 commentary(wt)`
 We first run through the matrix-vector multiplication with bias added, expanding the vector to length ${c_dimRef('4 * C', DimStyle.C4)}. (Note that the output matrix is transposed here.
 This is purely for vizualization purposes.)
+
+${codeSnippet(`x = self.c_fc(x)  # (1, 11, 48) -> (1, 11, 192)`, 'model.py', 88, false, true)}
 `;
     breakAfter();
 
@@ -72,10 +73,12 @@ This is purely for vizualization purposes.)
     breakAfter();
 
 commentary(wt)`
-Next, we apply the GELU activation function to each element of the vector. This is a key part of any neural network, where we introduce some non-linearity into the model. The specific function used, GELU,
+Next, we apply the GELU activation function (\`self.gelu\`) to each element of the vector. This is a key part of any neural network, where we introduce some non-linearity into the model. The specific function used, GELU,
 looks a lot like a ReLU function (computed as ${<code>max(0, x)</code>}), but it has a smooth curve rather than a sharp corner.
 
 ${<ReluGraph />}
+
+${codeSnippet(`x = self.gelu(x)  # (1, 11, 192) element-wise`, 'model.py', 89, false, true)}
 
 `;
     breakAfter();
@@ -85,7 +88,9 @@ ${<ReluGraph />}
     breakAfter();
 
 commentary(wt)`
-We then project the vector back down to length ${c_dimRef('C', DimStyle.C)} with another matrix-vector multiplication with bias added.
+We then project the vector back down to length ${c_dimRef('C', DimStyle.C)} with another matrix-vector multiplication (\`self.c_proj\`) with bias added.
+
+${codeSnippet(`x = self.c_proj(x)  # (1, 11, 192) -> (1, 11, 48)`, 'model.py', 90, false, true)}
 `;
     breakAfter();
 
@@ -96,8 +101,7 @@ We then project the vector back down to length ${c_dimRef('C', DimStyle.C)} with
 commentary(wt)`
 Like in the self-attention + projection section, we add the result of the MLP to its input, element-wise.
 
-${codeSnippet(`# In Block.forward — MLP with residual connection:
-x = x + self.mlp(self.ln_2(x))`, 'model.py — Block.forward', 105)}
+${codeSnippet(`x = x + self.mlp(self.ln_2(x))  # (1, 11, 48)`, 'model.py — Block.forward', 105, false, true)}
 `;
     breakAfter();
 

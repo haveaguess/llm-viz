@@ -32,8 +32,8 @@ export function walkthrough04_SelfAttention(args: IWalkthroughArgs) {
     wt.dimHighlightBlocks = [layout.residual0, block0.ln1.lnResid, ...head2.cubes];
 
     commentary(wt, null, 0)`
-The self-attention layer is perhaps the heart of the Transformer and of GPT. It's the phase where the
-columns in our input embedding matrix "talk" to each other. Up until now, and in all other phases,
+The self-attention layer (\`CausalSelfAttention\`) is perhaps the heart of the Transformer and of GPT. It's the phase where the
+columns in our input embedding matrix (\`x\`) "talk" to each other. Up until now, and in all other phases,
 the columns can be regarded independently.
 
 The self-attention layer is made up of several heads, and we'll focus on one of them for now.
@@ -41,13 +41,10 @@ The self-attention layer is made up of several heads, and we'll focus on one of 
 ${codeSnippet(`class CausalSelfAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
-        assert config.n_embd % config.n_head == 0
-        # key, query, value projections for all heads, but in a batch
-        self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd, bias=config.bias)
-        # output projection
-        self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
-        self.n_head = config.n_head
-        self.n_embd = config.n_embd`, 'model.py — CausalSelfAttention.__init__', 29)}`;
+        self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd)  # (48, 144)
+        self.c_proj = nn.Linear(config.n_embd, config.n_embd)      # (48, 48)
+        self.n_head = config.n_head  # 3
+        self.n_embd = config.n_embd  # 48`, 'model.py — CausalSelfAttention.__init__', 29, true)}`;
     breakAfter();
     let t_moveCamera = afterTime(null, 1.0);
     let t_highlightHeads = afterTime(null, 2.0);
@@ -56,24 +53,23 @@ ${codeSnippet(`class CausalSelfAttention(nn.Module):
 
     breakAfter();
     commentary(wt)`
-The first step is to produce three vectors for each of the ${c_dimRef('T', DimStyle.T)} columns from the ${c_blockRef('normalized input embedding matrix', block0.ln1.lnResid)}.
+The first step is to produce three vectors for each of the ${c_dimRef('T', DimStyle.T)} columns from the ${c_blockRef('normalized input embedding matrix', block0.ln1.lnResid)} (\`self.ln_1(x)\`).
 These vectors are the Q, K, and V vectors:
 
 ${embedInline(<ul>
-    <li>Q: <BlockText blk={head2.qBlock}>Query vector</BlockText></li>
-    <li>K: <BlockText blk={head2.kBlock}>Key vector</BlockText></li>
-    <li>V: <BlockText blk={head2.vBlock}>Value vector</BlockText></li>
+    <li>Q: <BlockText blk={head2.qBlock}>Query vector</BlockText> (<code>q</code>)</li>
+    <li>K: <BlockText blk={head2.kBlock}>Key vector</BlockText> (<code>k</code>)</li>
+    <li>V: <BlockText blk={head2.vBlock}>Value vector</BlockText> (<code>v</code>)</li>
 </ul>)}
 
 To produce one of these vectors, we perform a matrix-vector multiplication with a bias added. Each
-output cell is some linear combination of the input vector. E.g. for the ${c_blockRef('Q vectors', head2.qBlock)}, this is done with a dot product between
-a row of the ${c_blockRef('Q-weight matrix', head2.qWeightBlock)} and a column of the ${c_blockRef('input matrix', block0.ln1.lnResid)}.
+output cell is some linear combination of the input vector. E.g. for the ${c_blockRef('Q vectors', head2.qBlock)} (\`q\`), this is done with a dot product between
+a row of the ${c_blockRef('Q-weight matrix', head2.qWeightBlock)} (part of \`self.c_attn.weight\`) and a column of the ${c_blockRef('input matrix', block0.ln1.lnResid)}.
 
 In nanoGPT, all three projections are done in a single matrix multiply, then split:
 
-${codeSnippet(`# In CausalSelfAttention.forward:
-# calculate query, key, values for all heads in batch
-q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
+${codeSnippet(`q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
+# reshape for multi-head: (1, 11, 48) -> (1, 3, 11, 16)
 k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
 q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
 v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)`, 'model.py — CausalSelfAttention.forward', 56)}`;
@@ -196,22 +192,23 @@ These dot products are a way of measuring the similarity between the two vectors
 similar, the dot product will be large. If they're very different, the dot product will be small or
 negative.
 
-The idea of only using the query against past keys makes this _causal_ self-attention. That is,
-tokens can't "see into the future".
+${codeSnippet(`att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+# (1, 3, 11, 16) @ (1, 3, 16, 11) -> (1, 3, 11, 11)`, 'model.py', 67, false, true)}
 
-Another element is that after we take the dot product, we divide by sqrt(${c_dimRef('A', DimStyle.A)}), where
+The idea of only using the query against past keys makes this _causal_ self-attention. That is,
+tokens can't "see into the future". Future positions are masked out with \`-inf\`:
+
+${codeSnippet(`att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))`, 'model.py', 68, false, true)}
+
+After we take the dot product, we divide by sqrt(${c_dimRef('A', DimStyle.A)}), where
 ${c_dimRef('A', DimStyle.A)} is the length of the Q/K/V vectors. This scaling is done to prevent large values from
 dominating the normalization (softmax) in the next step.
 
-We'll mostly skip over the softmax operation (described later); suffice it to say, each row is normalized to sum
+We'll mostly skip over the softmax operation (described later); suffice it to say, each row of the ${c_blockRef('attention matrix', head2.attnMtx)} (\`att\`) is normalized to sum
 to 1.
 
-${codeSnippet(`# manual implementation of attention
-att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
-att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
-att = F.softmax(att, dim=-1)
-att = self.attn_dropout(att)
-y = att @ v  # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)`, 'model.py — CausalSelfAttention.forward', 67)}`;
+${codeSnippet(`att = F.softmax(att, dim=-1)  # normalize each row to sum to 1
+att = self.attn_dropout(att)`, 'model.py', 69, false, true)}`;
     breakAfter();
 
     let t_processAttnSmAggRow = afterTime(null, 1.0);
@@ -220,8 +217,10 @@ y = att @ v  # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)`, 'model.py — 
     breakAfter();
     commentary(wt)`
 Finally, we can produce the output vector for our column (${c_dimRef('t = 5', DimStyle.T)}). We look at the (${c_dimRef('t = 5', DimStyle.T)}) row of the
-${c_blockRef('normalized self-attention matrix', head2.attnMtxSm)} and for each element, multiply the corresponding ${c_blockRef('V vector', head2.vBlock)} of the
-other columns element-wise.`;
+${c_blockRef('normalized self-attention matrix', head2.attnMtxSm)} (\`att\`) and for each element, multiply the corresponding ${c_blockRef('V vector', head2.vBlock)} (\`v\`) of the
+other columns element-wise.
+
+${codeSnippet(`y = att @ v  # (1, 3, 11, 11) x (1, 3, 11, 16) -> (1, 3, 11, 16)`, 'model.py', 71, false, true)}`;
     breakAfter();
 
     let t_zoomVOutput = afterTime(null, 0.4, 0.5);

@@ -23,7 +23,7 @@ export function walkthrough06_Projection(args: IWalkthroughArgs) {
 After the self-attention process, we have outputs from each of the heads. These outputs are the
 appropriately mixed V vectors, influenced by the Q and K vectors.
 
-To combine the ${c_blockRef('output vectors', outBlocks)} from each head, we simply stack them on top of each other. So, for time
+To combine the ${c_blockRef('output vectors', outBlocks)} (\`y\`) from each head, we simply stack them on top of each other. So, for time
 ${c_dimRef('t = 4', DimStyle.T)}, we go from 3 vectors of length ${c_dimRef('A = 16', DimStyle.A)} to 1 vector of length ${c_dimRef('C = 48', DimStyle.C)}.`;
 
     breakAfter();
@@ -39,14 +39,15 @@ ${c_dimRef('t = 4', DimStyle.T)}, we go from 3 vectors of length ${c_dimRef('A =
 It's worth noting that in GPT, the length of the vectors within a head (${c_dimRef('A = 16', DimStyle.A)}) is equal to ${c_dimRef('C', DimStyle.C)} / num_heads.
 This ensures that when we stack them back together, we get the original length, ${c_dimRef('C', DimStyle.C)}.
 
-From here, we perform the projection to get the output of the layer. This is a simple matrix-vector
+From here, we perform the output projection (\`self.c_proj\`) to get the output of the layer. This is a simple matrix-vector
 multiplication on a per-column basis, with a bias added.
 
-${codeSnippet(`# In CausalSelfAttention.forward:
-# re-assemble all head outputs side by side
+${codeSnippet(`# re-assemble all head outputs side by side:
 y = y.transpose(1, 2).contiguous().view(B, T, C)
-# output projection
-y = self.resid_dropout(self.c_proj(y))`, 'model.py — CausalSelfAttention.forward', 72)}`;
+# (1, 3, 11, 16) -> (1, 11, 48)`, 'model.py', 72, false, true)}
+
+${codeSnippet(`# output projection:
+y = self.resid_dropout(self.c_proj(y))  # (1, 11, 48)`, 'model.py', 75, false, true)}`;
 
     breakAfter();
 
@@ -60,8 +61,7 @@ Now we have the output of the self-attention layer. Instead of passing this outp
 next phase, we add it element-wise to the input embedding. This process, denoted by the green
 vertical arrow, is called the _residual connection_ or _residual pathway_.
 
-${codeSnippet(`# In Block.forward — the residual connection:
-x = x + self.attn(self.ln_1(x))  # add attention output to input`, 'model.py — Block.forward', 104)}
+${codeSnippet(`x = x + self.attn(self.ln_1(x))  # (1, 11, 48) residual connection`, 'model.py — Block.forward', 104, false, true)}
 `;
 
     breakAfter();

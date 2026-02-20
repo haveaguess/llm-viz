@@ -15,15 +15,14 @@ export function walkthrough09_Output(args: IWalkthroughArgs) {
     let c0 = commentary(wt, null, 0)`
 
 Finally, we come to the end of the model. The output of the final transformer block is passed through
-a layer normalization, and then we use a linear transformation (matrix multiplication), this time without a bias.
+a final layer normalization (\`self.transformer.ln_f\`), and then we use a linear transformation (\`self.lm_head\`), this time without a bias.
 
-${codeSnippet(`# In GPT.forward — final layer norm and projection:
-x = self.transformer.ln_f(x)
-logits = self.lm_head(x)  # (b, t, vocab_size)`, 'model.py — GPT.forward', 182)}
+${codeSnippet(`x = self.transformer.ln_f(x)          # (1, 11, 48)
+logits = self.lm_head(x)              # (1, 11, 3) — one score per vocab token`, 'model.py — GPT.forward', 182)}
 
 This final transformation takes each of our column vectors from length C to length nvocab. Hence,
 it's effectively producing a score for each word in the vocabulary for each of our columns. These
-scores have a special name: logits.
+scores have a special name: logits (\`logits\`).
 
 The name "logits" comes from "log-odds," i.e., the logarithm of the odds of each token. "Log" is
 used because the softmax we apply next does an exponentiation to convert to "odds" or probabilities.
@@ -43,14 +42,14 @@ as the next in the sequence. We do this by "sampling from the distribution." Tha
 choose a token, weighted by its probability. For example, a token with a probability of 0.9 will be
 chosen 90% of the time.
 
-${codeSnippet(`# In GPT.generate — sampling the next token:
-logits = logits[:, -1, :] / temperature
+${codeSnippet(`# GPT.generate — sampling the next token:
+logits = logits[:, -1, :] / temperature    # (1, 3)
 if top_k is not None:
     v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
     logits[logits < v[:, [-1]]] = -float('Inf')
-probs = F.softmax(logits, dim=-1)
-idx_next = torch.multinomial(probs, num_samples=1)
-idx = torch.cat((idx, idx_next), dim=1)`, 'model.py — GPT.generate', 318)}
+probs = F.softmax(logits, dim=-1)          # (1, 3) probabilities
+idx_next = torch.multinomial(probs, num_samples=1)  # (1, 1)
+idx = torch.cat((idx, idx_next), dim=1)    # append to sequence`, 'model.py — GPT.generate', 318)}
 
 There are other options here, however, such as always choosing the token with the highest probability.
 

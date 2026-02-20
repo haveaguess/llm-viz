@@ -14,7 +14,14 @@ export function walkthrough08_Transformer(args: IWalkthroughArgs) {
 
     let c0 = commentary(wt, null, 0)`
 
-And that's a complete transformer block!
+And that's a complete transformer block (\`Block\`)!
+
+${codeSnippet(`# GPT.forward — loop through all transformer blocks:
+for block in self.transformer.h:   # 3 blocks
+    x = block(x)                   # (1, 11, 48)`, 'model.py — GPT.forward', 180)}
+
+These form the bulk of any GPT model and are repeated a number of times (via \`for block in self.transformer.h\`), with the output of one
+block feeding into the next, continuing the residual pathway.
 
 ${codeSnippet(`class Block(nn.Module):
     def __init__(self, config):
@@ -24,17 +31,10 @@ ${codeSnippet(`class Block(nn.Module):
         self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
         self.mlp = MLP(config)
 
-    def forward(self, x):
-        x = x + self.attn(self.ln_1(x))
-        x = x + self.mlp(self.ln_2(x))
-        return x`, 'model.py — Block', 94)}
-
-These form the bulk of any GPT model and are repeated a number of times, with the output of one
-block feeding into the next, continuing the residual pathway.
-
-${codeSnippet(`# In GPT.forward — loop through all transformer blocks:
-for block in self.transformer.h:
-    x = block(x)`, 'model.py — GPT.forward', 180)}
+    def forward(self, x):                   # x: (1, 11, 48)
+        x = x + self.attn(self.ln_1(x))    # (1, 11, 48)
+        x = x + self.mlp(self.ln_2(x))     # (1, 11, 48)
+        return x`, 'model.py — Block', 94, true)}
 
 As is common in deep learning, it's hard to say exactly what each of these layers is doing, but we
 have some general ideas: the earlier layers tend to focus on learning
