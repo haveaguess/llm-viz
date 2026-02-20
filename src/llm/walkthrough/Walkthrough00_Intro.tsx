@@ -12,6 +12,7 @@ import { IProgramState } from "../Program";
 import { lerp } from "@/src/utils/math";
 import { drawDependences } from "../Interaction";
 import { drawDataFlow } from "../components/DataFlow";
+import { codeSnippet } from "../components/CodeSnippet";
 
 /*
 We're mostly on the right track here I think.
@@ -61,7 +62,17 @@ export function walkthroughIntro(args: IWalkthroughArgs) {
     let c0 = commentary(wt, null, 0)`Welcome to the walkthrough of the GPT large language model! Here we'll explore the model _nano-gpt_, with a mere 85,000 parameters.
 
 Its goal is a simple one: take a sequence of six letters: ${embed(ExampleInputOutput)}
-and sort them in alphabetical order, i.e. to "ABBBCC".`;
+and sort them in alphabetical order, i.e. to "ABBBCC".
+
+${codeSnippet(`@dataclass
+class GPTConfig:
+    block_size: int = 1024  # T: context length
+    vocab_size: int = 50304
+    n_layer: int = 12       # number of transformer blocks
+    n_head: int = 12        # number of attention heads
+    n_embd: int = 768       # C: embedding dimension
+    dropout: float = 0.0
+    bias: bool = True`, 'model.py', 108)}`;
 
     if (c0.t > 0) {
         for (let cube of layout.cubes) {
@@ -166,7 +177,18 @@ and sort them in alphabetical order, i.e. to "ABBBCC".`;
     }
 
     breakAfter();
-    commentary(wt)`The embedding is then passed through the model, going through a series of layers, called transformers, before reaching the bottom.`;
+    commentary(wt)`The embedding is then passed through the model, going through a series of layers, called transformers, before reaching the bottom.
+
+${codeSnippet(`self.transformer = nn.ModuleDict(dict(
+    wte = nn.Embedding(config.vocab_size, config.n_embd),
+    wpe = nn.Embedding(config.block_size, config.n_embd),
+    drop = nn.Dropout(config.dropout),
+    h = nn.ModuleList([Block(config)
+                       for _ in range(config.n_layer)]),
+    ln_f = LayerNorm(config.n_embd, bias=config.bias),
+))
+self.lm_head = nn.Linear(config.n_embd,
+                          config.vocab_size, bias=False)`, 'model.py — GPT.__init__', 126)}`;
     breakAfter();
 
     {

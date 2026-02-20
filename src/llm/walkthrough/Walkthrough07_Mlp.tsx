@@ -9,6 +9,7 @@ import { processUpTo, startProcessBefore } from "./Walkthrough00_Intro";
 import { drawDataFlow } from "../components/DataFlow";
 import { drawDependences } from "../Interaction";
 import { makeArray, makeArrayRange } from "@/src/utils/data";
+import { codeSnippet } from "../components/CodeSnippet";
 
 export function walkthrough07_Mlp(args: IWalkthroughArgs) {
     let { walkthrough: wt, state, layout, tools: { afterTime, c_blockRef, c_dimRef, breakAfter, cleanup } } = args;
@@ -36,6 +37,21 @@ In the MLP, we put each of our ${c_dimRef('C = 48', DimStyle.C)} length column v
 2. A GELU activation function (element-wise)
 
 3. A ${c_blockRef('linear transformation', block.mlpProjWeight)} with a ${c_blockRef('bias', block.mlpProjBias)} added, back to a vector of length ${c_dimRef('C', DimStyle.C)}
+
+${codeSnippet(`class MLP(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.c_fc   = nn.Linear(config.n_embd, 4 * config.n_embd, bias=config.bias)
+        self.gelu   = nn.GELU()
+        self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd, bias=config.bias)
+        self.dropout = nn.Dropout(config.dropout)
+
+    def forward(self, x):
+        x = self.c_fc(x)
+        x = self.gelu(x)
+        x = self.c_proj(x)
+        x = self.dropout(x)
+        return x`, 'model.py — MLP', 78)}
 
 Let's track one of those vectors:
 `;
@@ -79,6 +95,9 @@ We then project the vector back down to length ${c_dimRef('C', DimStyle.C)} with
 
 commentary(wt)`
 Like in the self-attention + projection section, we add the result of the MLP to its input, element-wise.
+
+${codeSnippet(`# In Block.forward — MLP with residual connection:
+x = x + self.mlp(self.ln_2(x))`, 'model.py — Block.forward', 105)}
 `;
     breakAfter();
 

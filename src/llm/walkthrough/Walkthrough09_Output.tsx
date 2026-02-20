@@ -1,6 +1,7 @@
 import { Vec3 } from "@/src/utils/vector";
 import { Phase } from "./Walkthrough";
 import { commentary, IWalkthroughArgs, setInitialCamera } from "./WalkthroughTools";
+import { codeSnippet } from "../components/CodeSnippet";
 
 export function walkthrough09_Output(args: IWalkthroughArgs) {
     let { walkthrough: wt, state } = args;
@@ -15,6 +16,10 @@ export function walkthrough09_Output(args: IWalkthroughArgs) {
 
 Finally, we come to the end of the model. The output of the final transformer block is passed through
 a layer normalization, and then we use a linear transformation (matrix multiplication), this time without a bias.
+
+${codeSnippet(`# In GPT.forward — final layer norm and projection:
+x = self.transformer.ln_f(x)
+logits = self.lm_head(x)  # (b, t, vocab_size)`, 'model.py — GPT.forward', 182)}
 
 This final transformation takes each of our column vectors from length C to length nvocab. Hence,
 it's effectively producing a score for each word in the vocabulary for each of our columns. These
@@ -38,6 +43,15 @@ as the next in the sequence. We do this by "sampling from the distribution." Tha
 choose a token, weighted by its probability. For example, a token with a probability of 0.9 will be
 chosen 90% of the time.
 
+${codeSnippet(`# In GPT.generate — sampling the next token:
+logits = logits[:, -1, :] / temperature
+if top_k is not None:
+    v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+    logits[logits < v[:, [-1]]] = -float('Inf')
+probs = F.softmax(logits, dim=-1)
+idx_next = torch.multinomial(probs, num_samples=1)
+idx = torch.cat((idx, idx_next), dim=1)`, 'model.py — GPT.generate', 318)}
+
 There are other options here, however, such as always choosing the token with the highest probability.
 
 We can also control the "smoothness" of the distribution by using a temperature parameter. A higher
@@ -47,6 +61,15 @@ concentrated on the highest probability tokens.
 We do this by dividing the logits (the output of the linear transformation) by the temperature before
 applying the softmax. Since the exponentiation in the softmax has a large effect on larger numbers,
 making them all closer together will reduce this effect.
+
+During training, we compute the loss using cross-entropy:
+
+${codeSnippet(`# In GPT.forward — computing the training loss:
+if targets is not None:
+    logits = self.lm_head(x)
+    loss = F.cross_entropy(
+        logits.view(-1, logits.size(-1)),
+        targets.view(-1), ignore_index=-1)`, 'model.py — GPT.forward', 184)}
 `;
 
 }

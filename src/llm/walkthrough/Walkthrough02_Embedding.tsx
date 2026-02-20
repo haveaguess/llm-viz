@@ -8,6 +8,7 @@ import { Dim, Vec3, Vec4 } from "@/src/utils/vector";
 import { Phase } from "./Walkthrough";
 import { commentary, DimStyle, IWalkthroughArgs, moveCameraTo, setInitialCamera } from "./WalkthroughTools";
 import { processUpTo, startProcessBefore } from "./Walkthrough00_Intro";
+import { codeSnippet } from "../components/CodeSnippet";
 
 export function walkthrough02_Embedding(args: IWalkthroughArgs) {
     let { walkthrough: wt, state, tools: { c_str, c_blockRef, c_dimRef, afterTime, cleanup, breakAfter }, layout } = args;
@@ -38,6 +39,10 @@ We use the token index (in this case ${c_str('B', DimStyle.Token)} = ${c_dimRef(
 Note we're using 0-based indexing here, so the first column is at index 0.
 
 This produces a column vector of size ${c_dimRef('_C_ = 48', DimStyle.C)}, which we describe as the token embedding.
+
+${codeSnippet(`# In GPT.__init__:
+wte = nn.Embedding(config.vocab_size, config.n_embd)
+wpe = nn.Embedding(config.block_size, config.n_embd)`, 'model.py — GPT.__init__', 127)}
     `;
     breakAfter();
 
@@ -61,6 +66,11 @@ This also produces a column vector of size ${c_dimRef('_C_ = 48', DimStyle.C)}, 
 Note that both of these position and token embeddings are learned during training (indicated by their blue color).
 
 Now that we have these two column vectors, we simply add them together to produce another column vector of size ${c_dimRef('_C_ = 48', DimStyle.C)}.
+
+${codeSnippet(`# In GPT.forward:
+tok_emb = self.transformer.wte(idx)   # (b, t, n_embd)
+pos_emb = self.transformer.wpe(pos)   # (t, n_embd)
+x = self.transformer.drop(tok_emb + pos_emb)`, 'model.py — GPT.forward', 177)}
 `;
 
     breakAfter();

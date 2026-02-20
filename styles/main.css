@@ -2,6 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+/* nanoGPT Code Snippet Annotations */
+.code-snippet {
+    margin: 12px 0;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    overflow: hidden;
+    font-size: 13px;
+    background: #f6f8fa;
+}
+
+.code-snippet-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: #e8ecf0;
+    border-bottom: 1px solid #d0d7de;
+    cursor: pointer;
+    user-select: none;
+    font-size: 12px;
+}
+
+.code-snippet-header:hover {
+    background: #dce0e5;
+}
+
+.code-snippet-toggle {
+    margin-right: 6px;
+    font-size: 10px;
+    color: #666;
+}
+
+.code-snippet-filename {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-weight: 600;
+    color: #0969da;
+}
+
+.code-snippet-line {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    color: #888;
+}
+
+.code-snippet-code {
+    padding: 10px 12px;
+    margin: 0;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #24292f;
+    white-space: pre;
+    tab-size: 4;
+}
+
+.code-snippet-code code {
+    font-family: inherit;
+}
+
+/* Python syntax highlighting */
+.code-comment { color: #6a737d; font-style: italic; }
+.code-keyword { color: #cf222e; font-weight: 600; }
+.code-string { color: #0a3069; }
+.code-number { color: #0550ae; }
+.code-builtin { color: #8250df; }
+.code-function { color: #8250df; }
+.code-decorator { color: #cf222e; }
+
 button {
     /* clear all the cruft from the default button styles */
     border: none;

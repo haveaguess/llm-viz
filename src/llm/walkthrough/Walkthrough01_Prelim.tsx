@@ -3,6 +3,7 @@ import { Phase } from "./Walkthrough";
 import { commentary, embed, IWalkthroughArgs, setInitialCamera } from "./WalkthroughTools";
 import s from './Walkthrough.module.scss';
 import { Vec3 } from '@/src/utils/vector';
+import { codeSnippet } from "../components/CodeSnippet";
 
 let minGptLink = 'https://github.com/karpathy/minGPT';
 let pytorchLink = 'https://pytorch.org/';
@@ -32,6 +33,17 @@ This guide was inspired by the ${embedLink('minGPT', minGptLink)} GitHub project
 created by ${embedLink('Andrej Karpathy', andrejLink)}.
 His YouTube series ${embedLink("Neural Networks: Zero to Hero", zeroToHeroLink)} and the minGPT project have been invaluable resources in the creation of this
 guide. The toy model featured here is based on one found within the minGPT project.
+
+This annotated version maps the visualization to the ${embedLink('nanoGPT', 'https://github.com/karpathy/nanoGPT')} codebase — a minimal, readable PyTorch implementation of GPT. Each section includes the corresponding Python code so you can follow along in both the visualization and the source.
+
+${codeSnippet(`# The entire model is defined in a single file: model.py
+# Key classes:
+#   GPTConfig    — hyperparameters (n_layer, n_head, n_embd...)
+#   LayerNorm    — layer normalization
+#   CausalSelfAttention — multi-head self-attention
+#   MLP          — feed-forward network
+#   Block        — one transformer block (attention + MLP)
+#   GPT          — the full model`, 'model.py — overview')}
 
 Alright, let's get started!
 `;

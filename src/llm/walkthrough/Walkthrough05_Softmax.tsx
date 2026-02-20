@@ -1,6 +1,7 @@
 import { Vec3 } from "@/src/utils/vector";
 import { Phase } from "./Walkthrough";
 import { commentary, IWalkthroughArgs, setInitialCamera } from "./WalkthroughTools";
+import { codeSnippet } from "../components/CodeSnippet";
 
 export function walkthrough05_Softmax(args: IWalkthroughArgs) {
     let { walkthrough: wt, state } = args;
@@ -27,6 +28,12 @@ of the values is 1.0. Since all the exponentiated values are positive, we know t
 values will be between 0.0 and 1.0, which provides a probability distribution over the original values.
 
 That's it for softmax: simply exponentiate the values and then divide by the sum.
+
+${codeSnippet(`# In CausalSelfAttention.forward — softmax on attention scores:
+att = F.softmax(att, dim=-1)
+
+# At the output — softmax to get token probabilities:
+probs = F.softmax(logits, dim=-1)`, 'model.py', 69)}
 
 However, there's a slight complication. If any of the input values are quite large, then the
 exponentiated values will be very large. We'll end up dividing a large number by a very large number,

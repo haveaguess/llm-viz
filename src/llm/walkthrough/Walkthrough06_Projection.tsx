@@ -3,6 +3,7 @@ import { Phase } from "./Walkthrough";
 import { commentary, DimStyle, IWalkthroughArgs, moveCameraTo, setInitialCamera } from "./WalkthroughTools";
 import { lerp, lerpSmoothstep } from "@/src/utils/math";
 import { processUpTo, startProcessBefore } from "./Walkthrough00_Intro";
+import { codeSnippet } from "../components/CodeSnippet";
 
 export function walkthrough06_Projection(args: IWalkthroughArgs) {
     let { walkthrough: wt, state, layout, tools: { breakAfter, afterTime, c_blockRef, c_dimRef, cleanup } } = args;
@@ -39,7 +40,13 @@ It's worth noting that in GPT, the length of the vectors within a head (${c_dimR
 This ensures that when we stack them back together, we get the original length, ${c_dimRef('C', DimStyle.C)}.
 
 From here, we perform the projection to get the output of the layer. This is a simple matrix-vector
-multiplication on a per-column basis, with a bias added.`;
+multiplication on a per-column basis, with a bias added.
+
+${codeSnippet(`# In CausalSelfAttention.forward:
+# re-assemble all head outputs side by side
+y = y.transpose(1, 2).contiguous().view(B, T, C)
+# output projection
+y = self.resid_dropout(self.c_proj(y))`, 'model.py — CausalSelfAttention.forward', 72)}`;
 
     breakAfter();
 
@@ -52,6 +59,9 @@ multiplication on a per-column basis, with a bias added.`;
 Now we have the output of the self-attention layer. Instead of passing this output directly to the
 next phase, we add it element-wise to the input embedding. This process, denoted by the green
 vertical arrow, is called the _residual connection_ or _residual pathway_.
+
+${codeSnippet(`# In Block.forward — the residual connection:
+x = x + self.attn(self.ln_1(x))  # add attention output to input`, 'model.py — Block.forward', 104)}
 `;
 
     breakAfter();

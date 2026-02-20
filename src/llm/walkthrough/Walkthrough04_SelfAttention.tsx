@@ -15,6 +15,7 @@ import { embedInline } from "./Walkthrough01_Prelim";
 import { Colors, commentary, DimStyle, dimStyleColor, IWalkthroughArgs, moveCameraTo, setInitialCamera } from "./WalkthroughTools";
 import { BlockText } from '../components/CommentaryHelpers';
 import clsx from 'clsx';
+import { codeSnippet } from "../components/CodeSnippet";
 
 export function walkthrough04_SelfAttention(args: IWalkthroughArgs) {
     let { walkthrough: wt, layout, state, tools: { afterTime, c_str, c_blockRef, c_dimRef, breakAfter, cleanup } } = args;
@@ -35,7 +36,18 @@ The self-attention layer is perhaps the heart of the Transformer and of GPT. It'
 columns in our input embedding matrix "talk" to each other. Up until now, and in all other phases,
 the columns can be regarded independently.
 
-The self-attention layer is made up of several heads, and we'll focus on one of them for now.`;
+The self-attention layer is made up of several heads, and we'll focus on one of them for now.
+
+${codeSnippet(`class CausalSelfAttention(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        assert config.n_embd % config.n_head == 0
+        # key, query, value projections for all heads, but in a batch
+        self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd, bias=config.bias)
+        # output projection
+        self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
+        self.n_head = config.n_head
+        self.n_embd = config.n_embd`, 'model.py — CausalSelfAttention.__init__', 29)}`;
     breakAfter();
     let t_moveCamera = afterTime(null, 1.0);
     let t_highlightHeads = afterTime(null, 2.0);
@@ -55,7 +67,16 @@ ${embedInline(<ul>
 
 To produce one of these vectors, we perform a matrix-vector multiplication with a bias added. Each
 output cell is some linear combination of the input vector. E.g. for the ${c_blockRef('Q vectors', head2.qBlock)}, this is done with a dot product between
-a row of the ${c_blockRef('Q-weight matrix', head2.qWeightBlock)} and a column of the ${c_blockRef('input matrix', block0.ln1.lnResid)}.`;
+a row of the ${c_blockRef('Q-weight matrix', head2.qWeightBlock)} and a column of the ${c_blockRef('input matrix', block0.ln1.lnResid)}.
+
+In nanoGPT, all three projections are done in a single matrix multiply, then split:
+
+${codeSnippet(`# In CausalSelfAttention.forward:
+# calculate query, key, values for all heads in batch
+q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
+k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)`, 'model.py — CausalSelfAttention.forward', 56)}`;
     breakAfter();
 
     let t_focusQCol = afterTime(null, 1.0);
@@ -183,7 +204,14 @@ ${c_dimRef('A', DimStyle.A)} is the length of the Q/K/V vectors. This scaling is
 dominating the normalization (softmax) in the next step.
 
 We'll mostly skip over the softmax operation (described later); suffice it to say, each row is normalized to sum
-to 1.`;
+to 1.
+
+${codeSnippet(`# manual implementation of attention
+att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
+att = F.softmax(att, dim=-1)
+att = self.attn_dropout(att)
+y = att @ v  # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)`, 'model.py — CausalSelfAttention.forward', 67)}`;
     breakAfter();
 
     let t_processAttnSmAggRow = afterTime(null, 1.0);
